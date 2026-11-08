@@ -171,3 +171,10 @@ describe('empty and very long input (R9 item 14)', () => {
     assert.equal(score(issues) >= 0 && score(issues) <= 100, true);
   });
 });
+
+describe('score floor (FIX b75f8d7)', () => {
+  it('stays at 0 when fix issues cost more than 100 points', () => {
+    const issues = Array.from({ length: 5 }, () => ({ level: 'fix', msg: 'x' }));
+    assert.equal(score(issues), 0);
+  });
+});
