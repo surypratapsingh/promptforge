@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec,
+  assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec, TEMPLATES,
 } from './forge.js';
 
 describe('assemble', () => {
@@ -103,27 +103,66 @@ describe('score', () => {
   });
 });
 
+// The pre-compression link format, exactly as older versions wrote it: base64url of UTF-8 JSON.
+const oldLink = (spec) => Buffer.from(JSON.stringify(spec), 'utf8').toString('base64url');
+
 describe('encodeSpec / decodeSpec', () => {
-  it('round-trips Unicode and Hindi', () => {
+  it('round-trips Unicode and Hindi', async () => {
     const spec = { task: 'नमस्ते — summarise ✓', role: 'tutor', context: 'कुछ संदर्भ' };
-    const back = decodeSpec(encodeSpec(spec));
+    const back = await decodeSpec(await encodeSpec(spec));
     assert.equal(back.task, spec.task);
     assert.equal(back.role, 'tutor');
     assert.equal(back.context, 'कुछ संदर्भ');
     assert.equal(back.evil, undefined);
   });
 
-  it('drops unknown fields', () => {
-    const spec = { task: 'Hello', evil: '<script>' };
-    const back = decodeSpec(encodeSpec(spec));
+  it('round-trips a short prompt', async () => {
+    const back = await decodeSpec(await encodeSpec({ task: 'Hello', role: 'tutor' }));
+    assert.deepEqual([back.task, back.role], ['Hello', 'tutor']);
+  });
+
+  it('round-trips a 10,000-character prompt with emoji', async () => {
+    const task = '🙂 summarise this ✓ '.repeat(500).slice(0, 10000);
+    const link = await encodeSpec({ task });
+    assert.ok(link.startsWith('z1.'));
+    assert.equal((await decodeSpec(link)).task, task);
+  });
+
+  it('drops unknown fields', async () => {
+    const back = await decodeSpec(await encodeSpec({ task: 'Hello', evil: '<script>' }));
     assert.equal(back.task, 'Hello');
     assert.equal(back.evil, undefined);
   });
 
-  it('returns null on garbage input', () => {
-    assert.equal(decodeSpec('%%%not-base64'), null);
-    assert.equal(decodeSpec(''), null);
-    assert.equal(decodeSpec(undefined), null);
+  it('still opens an old-format link (no prefix)', async () => {
+    const back = await decodeSpec(oldLink({ task: 'नमस्ते ✓', role: 'tutor', evil: 'x' }));
+    assert.equal(back.task, 'नमस्ते ✓');
+    assert.equal(back.role, 'tutor');
+    assert.equal(back.evil, undefined);
+  });
+
+  it('a compressed link is shorter than the old one for a typical template', async () => {
+    const spec = TEMPLATES[0].spec;
+    const compressed = await encodeSpec(spec);
+    assert.ok(compressed.length < oldLink(spec).length, `${compressed.length} vs ${oldLink(spec).length}`);
+  });
+
+  it('returns null on garbage and truncated input', async () => {
+    const good = await encodeSpec({ task: 'Hello world, a longer task to compress for the test' });
+    assert.equal(await decodeSpec('%%%not-base64'), null);
+    assert.equal(await decodeSpec(''), null);
+    assert.equal(await decodeSpec(undefined), null);
+    assert.equal(await decodeSpec('z1.'), null);
+    assert.equal(await decodeSpec('z1.!!!notbase64'), null);
+    assert.equal(await decodeSpec('z1.AAAA'), null);
+    assert.equal(await decodeSpec(good.slice(0, good.length - 6)), null);
+  });
+
+  it('refuses a link that inflates past the size cap', async () => {
+    const bomb = new Response(new Uint8Array(3_000_000)).body.pipeThrough(new CompressionStream('deflate-raw'));
+    const bytes = new Uint8Array(await new Response(bomb).arrayBuffer());
+    const link = 'z1.' + Buffer.from(bytes).toString('base64url');
+    assert.equal(await decodeSpec(link), null);
   });
 });
 

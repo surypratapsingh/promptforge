@@ -75,17 +75,44 @@ export function lint(spec, values = {}) {
 
 export const score = (issues) => Math.max(0, 100 - (issues ?? []).reduce((n, i) => n + (i.level === 'fix' ? 25 : 8), 0));
 
-// Share links carry the prompt in the URL hash (base64url of UTF-8 JSON). Only known text fields come back.
-export function encodeSpec(spec) {
+// Share links carry the prompt in the URL hash. Current links: 'z1.' + base64url(deflate-raw(JSON)).
+// Older links have no prefix and are base64url(JSON); they still decode. Only known text fields come back.
+const LINK_PREFIX = 'z1.';
+const MAX_INFLATED = 1_000_000; // a link that inflates past this is not a prompt; stops zip bombs
+
+const b64url = (bytes) => {
   let s = '';
-  for (const b of new TextEncoder().encode(JSON.stringify(spec))) s += String.fromCharCode(b);
+  for (const b of bytes) s += String.fromCharCode(b);
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+const unb64url = (str) => Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+
+async function inflate(bytes) {
+  const reader = new Response(bytes).body.pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const chunks = [];
+  let total = 0;
+  for (let r = await reader.read(); !r.done; r = await reader.read()) {
+    total += r.value.length;
+    if (total > MAX_INFLATED) throw new RangeError('share link too large');
+    chunks.push(r.value);
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) { out.set(c, at); at += c.length; }
+  return out;
 }
 
-export function decodeSpec(str) {
+export async function encodeSpec(spec) {
+  const json = new TextEncoder().encode(JSON.stringify(spec));
+  const zipped = new Response(json).body.pipeThrough(new CompressionStream('deflate-raw'));
+  return LINK_PREFIX + b64url(new Uint8Array(await new Response(zipped).arrayBuffer()));
+}
+
+export async function decodeSpec(str) {
   try {
-    const bin = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
-    return pickSpec(JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))));
+    const bytes = str.startsWith(LINK_PREFIX) ? await inflate(unb64url(str.slice(LINK_PREFIX.length))) : unb64url(str);
+    return pickSpec(JSON.parse(new TextDecoder().decode(bytes)));
   } catch {
     return null;
   }
