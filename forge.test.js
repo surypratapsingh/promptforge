@@ -66,3 +66,9 @@ test('share links round-trip Unicode and drop unknown fields', () => {
   assert.equal(back.context, '');
   assert.equal(decodeSpec('%%%not-base64'), null);
 });
+
+test('lint warns only when the prompt is over about 6,000 tokens', () => {
+  const big = { task: 'Summarise the text below for a reader.', input: 'word '.repeat(5000), format: '5 bullets, 20 words each' };
+  assert.match(lint(big).map((i) => i.msg).join('\n'), /Over about 6,000 tokens/);
+  assert.doesNotMatch(lint({ task: 'Summarise the text below.', format: '5 bullets' }).map((i) => i.msg).join('\n'), /Over about 6,000/);
+});
