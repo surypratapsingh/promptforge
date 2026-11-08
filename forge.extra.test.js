@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec,
+  assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec, overLimit, MAX_PART,
 } from './forge.js';
 
 describe('assemble', () => {
@@ -176,5 +176,22 @@ describe('score floor (FIX b75f8d7)', () => {
   it('stays at 0 when fix issues cost more than 100 points', () => {
     const issues = Array.from({ length: 5 }, () => ({ level: 'fix', msg: 'x' }));
     assert.equal(score(issues), 0);
+  });
+});
+
+describe('share length guard', () => {
+  it('pickSpec cuts a part to MAX_PART characters on read', () => {
+    assert.equal(pickSpec({ task: 'x'.repeat(MAX_PART + 5) }).task.length, MAX_PART);
+  });
+
+  it('overLimit names only the parts that would be cut', () => {
+    assert.deepEqual(overLimit({ task: 'short', context: 'x'.repeat(MAX_PART + 1) }), ['Context']);
+    assert.deepEqual(overLimit({ task: 'short' }), []);
+    assert.deepEqual(overLimit(undefined), []);
+  });
+
+  it('a part exactly at the limit still shares whole', async () => {
+    assert.equal(overLimit({ task: 'x'.repeat(MAX_PART) }).length, 0);
+    assert.equal((await decodeSpec(await encodeSpec({ task: 'x'.repeat(MAX_PART) }))).task.length, MAX_PART);
   });
 });
