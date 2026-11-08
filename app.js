@@ -125,7 +125,7 @@ $('#download').addEventListener('click', () => {
 $('#share').addEventListener('click', () => {
   if (isEmpty()) return say('Fill in a part first.');
   const long = overLimit(getSpec());
-  if (long.length) return say(`Too long to share: ${long.join(', ')} is over ${MAX_PART.toLocaleString()} characters. Shorten it first.`);
+  if (long.length) return say(`Too long to share: ${long.join(', ')}. Each part can be at most ${MAX_PART.toLocaleString()} characters. Shorten it first.`);
   const url = `${location.origin}${location.pathname}#p=${encodeSpec(getSpec())}`;
   history.replaceState(null, '', url);
   copy(url, url.length > 8000
