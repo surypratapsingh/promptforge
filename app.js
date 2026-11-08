@@ -1,4 +1,4 @@
-import { FIELDS, assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec, TEMPLATES } from './forge.js';
+import { FIELDS, assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec, overLimit, MAX_PART, TEMPLATES } from './forge.js';
 
 const $ = (s) => document.querySelector(s);
 const LIB = 'promptforge.library';
@@ -124,6 +124,8 @@ $('#download').addEventListener('click', () => {
 
 $('#share').addEventListener('click', () => {
   if (isEmpty()) return say('Fill in a part first.');
+  const long = overLimit(getSpec());
+  if (long.length) return say(`Too long to share: ${long.join(', ')} is over ${MAX_PART.toLocaleString()} characters. Shorten it first.`);
   const url = `${location.origin}${location.pathname}#p=${encodeSpec(getSpec())}`;
   history.replaceState(null, '', url);
   copy(url, url.length > 8000
