@@ -39,7 +39,9 @@ const HEAD_KEYS = Object.fromEntries(ORDER.map((key) => [HEAD[key], key]));
 export function importPrompt(text) {
   const t = String(text ?? '').replace(/\r\n/g, '\n').trim();
   const tagged = [...t.matchAll(/<(\w+)>\n([\s\S]*?)\n<\/\1>/g)].filter((m) => TAG_KEYS[m[1]]);
-  const headed = [...t.matchAll(/^## (.+)\n([\s\S]*?)(?=^## |(?![\s\S]))/gm)].filter((m) => HEAD_KEYS[m[1].trim()]);
+  // A section ends at the next known heading only, so a "## Notes" line inside a value stays in that value.
+  const names = Object.keys(HEAD_KEYS).join('|');
+  const headed = [...t.matchAll(new RegExp(`^## (${names})\\n([\\s\\S]*?)(?=^## (?:${names})$|(?![\\s\\S]))`, 'gm'))];
   const hits = tagged.length
     ? tagged.map((m) => [m.index, TAG_KEYS[m[1]], m[2]])
     : headed.map((m) => [m.index, HEAD_KEYS[m[1].trim()], m[2]]);

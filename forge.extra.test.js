@@ -205,6 +205,13 @@ describe('importPrompt (inverse of assemble)', () => {
     }
   });
 
+  it('keeps a markdown-style value that contains a non-part heading', () => {
+    const s2 = { task: 'Summarise the notes.', input: 'Intro\n## Notes\nkept line' };
+    const text = assemble(s2, 'markdown');
+    assert.equal(importPrompt(text).input, s2.input);
+    assert.equal(assemble(importPrompt(text), 'markdown'), text);
+  });
+
   it('returns null when no part is recognised, so the caller can fall back', () => {
     assert.equal(importPrompt('Just some plain text with no parts.'), null);
     assert.equal(importPrompt(''), null);
