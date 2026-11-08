@@ -155,3 +155,19 @@ describe('pickSpec', () => {
     assert.deepEqual(pickSpec({}), { role: '', context: '', task: '', input: '', examples: '', constraints: '', format: '', tone: '' });
   });
 });
+
+describe('empty and very long input (R9 item 14)', () => {
+  it('a very long prompt still gives a score in 0-100 and the token tip', () => {
+    const spec = { task: 'Summarise the text below.', input: 'word '.repeat(200000), format: '5 bullets' };
+    const issues = lint(spec, { });
+    assert.ok(issues.some((i) => /Over about 6,000 tokens/.test(i.msg)));
+    const s = score(issues);
+    assert.ok(Number.isInteger(s) && s >= 0 && s <= 100);
+  });
+
+  it('an empty spec gives a fix-level task message and a score in range', () => {
+    const issues = lint({});
+    assert.ok(issues.some((i) => i.level === 'fix' && /Add a task/.test(i.msg)));
+    assert.equal(score(issues) >= 0 && score(issues) <= 100, true);
+  });
+});
