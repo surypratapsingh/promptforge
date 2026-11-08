@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec,
+  importPrompt, TEMPLATES,
 } from './forge.js';
 
 describe('assemble', () => {
@@ -176,5 +177,38 @@ describe('score floor (FIX b75f8d7)', () => {
   it('stays at 0 when fix issues cost more than 100 points', () => {
     const issues = Array.from({ length: 5 }, () => ({ level: 'fix', msg: 'x' }));
     assert.equal(score(issues), 0);
+  });
+});
+
+describe('importPrompt (inverse of assemble)', () => {
+  const spec = {
+    role: 'a senior Python reviewer', context: 'Team of five, Python 3.12.', task: 'Review the diff below for bugs.',
+    input: '{{diff}}', examples: 'Input: x = 1\nOutput: none', constraints: 'Keep it short\n- Name the file', format: 'Bullet list', tone: 'Direct.',
+  };
+
+  it('rebuilds the same text for every template, in both styles', () => {
+    for (const style of ['tags', 'markdown']) {
+      for (const t of TEMPLATES) {
+        const text = assemble(t.spec, style);
+        assert.equal(assemble(importPrompt(text), style), text, `${t.name} (${style})`);
+      }
+    }
+  });
+
+  it('round-trips a full spec with a multi-line rule list and a variable', () => {
+    for (const style of ['tags', 'markdown']) {
+      const text = assemble(spec, style);
+      const back = importPrompt(text);
+      assert.equal(assemble(back, style), text);
+      assert.equal(back.task, spec.task);
+      assert.equal(back.input, '{{diff}}');
+    }
+  });
+
+  it('returns null when no part is recognised, so the caller can fall back', () => {
+    assert.equal(importPrompt('Just some plain text with no parts.'), null);
+    assert.equal(importPrompt(''), null);
+    assert.equal(importPrompt(undefined), null);
+    assert.equal(importPrompt('<unknown>\nx\n</unknown>'), null);
   });
 });
