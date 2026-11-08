@@ -17,6 +17,8 @@ Build clear AI prompts from parts, in the browser. No account, nothing sent anyw
 - `app.js`: the page. Text goes in with `textContent`, never `innerHTML`. Share links and imported files keep only the known text fields.
 - No framework, no build step, no dependencies.
 
+![CI](https://github.com/surypratapsingh/promptforge/actions/workflows/ci.yml/badge.svg)
+
 ## Run and test
 Node 18 or newer.
 

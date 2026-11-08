@@ -21,10 +21,11 @@ const rules = (s) => clean(s).split('\n').map((l) => l.trim().replace(/^[-*•]\
 // style: 'tags' (XML-style tags, which Claude and GPT models follow well) or 'markdown' (headings).
 export function assemble(spec, style = 'tags') {
   const out = [];
-  const role = clean(spec.role);
+  const s = spec ?? {}; // avoid throwing on undefined/null
+  const role = clean(s.role);
   if (role) out.push(/^you are\b/i.test(role) ? role : `You are ${role.replace(/^an? /i, (m) => m.toLowerCase()).replace(/\.$/, '')}.`);
   for (const key of ORDER) {
-    const value = key === 'constraints' ? rules(spec[key]).map((l) => `- ${l}`).join('\n') : clean(spec[key]);
+    const value = key === 'constraints' ? rules(s[key]).map((l) => `- ${l}`).join('\n') : clean(s[key]);
     if (!value) continue;
     out.push(style === 'markdown' ? `## ${HEAD[key]}\n${value}` : `<${TAGS[key]}>\n${value}\n</${TAGS[key]}>`);
   }
@@ -36,40 +37,43 @@ const VAR = /\{\{\s*([A-Za-z_][\w]*)\s*\}\}/g;
 const filled = (values, name) => Object.hasOwn(values, name) && clean(values[name]) !== '';
 
 export function findVars(text) {
-  return [...new Set([...text.matchAll(VAR)].map((m) => m[1]))];
+  const t = String(text ?? '');
+  return [...new Set([...t.matchAll(VAR)].map((m) => m[1]))];
 }
 
 export function fillVars(text, values) {
-  return text.replace(VAR, (m, name) => (filled(values, name) ? values[name] : m));
+  const t = String(text ?? '');
+  return t.replace(VAR, (m, name) => (filled(values, name) ? values[name] : m));
 }
 
 // Rough count: about 4 characters per token for English text.
-export const estimateTokens = (text) => Math.ceil(text.length / 4);
+export const estimateTokens = (text) => Math.ceil(String(text ?? '').length / 4);
 
 const VAGUE = /\b(etc|some|good|nice|stuff|things|maybe|properly|appropriate|various)\b/gi;
 
 // Rule-based checks. level 'fix' = the prompt will likely fail; 'tip' = it would get better.
 export function lint(spec, values = {}) {
   const out = [];
-  const task = clean(spec.task), format = clean(spec.format), cons = rules(spec.constraints);
+  const s = spec ?? {};
+  const task = clean(s.task), format = clean(s.format), cons = rules(s.constraints);
   if (!task) out.push({ level: 'fix', msg: 'Add a task: say what you want done.' });
   else if (task.split(/\s+/).length < 4) out.push({ level: 'tip', msg: 'The task is very short. Say what, for whom, and why.' });
-  const vague = [...new Set([...`${task}\n${spec.constraints ?? ''}\n${format}`.matchAll(VAGUE)].map((m) => m[0].toLowerCase()))];
+  const vague = [...new Set([...`${task}\n${s.constraints ?? ''}\n${format}`.matchAll(VAGUE)].map((m) => m[0].toLowerCase()))];
   if (vague.length) out.push({ level: 'tip', msg: `Vague words: ${vague.join(', ')}. Say exactly what you mean.` });
   if (!format) out.push({ level: 'tip', msg: 'Say what the answer should look like: length, sections, a table or JSON.' });
-  if (/json/i.test(format) && !clean(spec.examples)) out.push({ level: 'tip', msg: 'Asking for JSON? Add an example with the exact keys.' });
-  if (!/\d/.test(`${format}\n${spec.constraints ?? ''}`)) out.push({ level: 'tip', msg: 'Give a size: a number of words, bullet points or sentences.' });
+  if (/json/i.test(format) && !clean(s.examples)) out.push({ level: 'tip', msg: 'Asking for JSON? Add an example with the exact keys.' });
+  if (!/\d/.test(`${format}\n${s.constraints ?? ''}`)) out.push({ level: 'tip', msg: 'Give a size: a number of words, bullet points or sentences.' });
   const negative = cons.filter((l) => /^(don'?t|do not|never|avoid|no)\b/i.test(l));
   if (negative.length >= 2 && negative.length === cons.length) out.push({ level: 'tip', msg: 'Every rule says what not to do. Say what to do instead, too.' });
-  const shouting = [...new Set(assemble(spec).match(/\b[A-Z]{4,}\b/g) || [])].filter((w) => w !== 'JSON' && w !== 'HTML');
+  const shouting = [...new Set(assemble(s).match(/\b[A-Z]{4,}\b/g) || [])].filter((w) => w !== 'JSON' && w !== 'HTML');
   if (shouting.length) out.push({ level: 'tip', msg: `Capitals (${shouting.join(', ')}) rarely help. Explain why the rule matters instead.` });
-  const missing = findVars(assemble(spec)).filter((v) => !filled(values, v));
+  const missing = findVars(assemble(s)).filter((v) => !filled(values, v));
   if (missing.length) out.push({ level: 'fix', msg: `Fill in: ${missing.map((v) => `{{${v}}}`).join(', ')}.` });
-  if (estimateTokens(assemble(spec)) > 6000) out.push({ level: 'tip', msg: 'Over about 6,000 tokens. Cut what the AI does not need.' });
+  if (estimateTokens(assemble(s)) > 6000) out.push({ level: 'tip', msg: 'Over about 6,000 tokens. Cut what the AI does not need.' });
   return out;
 }
 
-export const score = (issues) => Math.max(0, 100 - issues.reduce((n, i) => n + (i.level === 'fix' ? 25 : 8), 0));
+export const score = (issues) => Math.max(0, 100 - (issues ?? []).reduce((n, i) => n + (i.level === 'fix' ? 25 : 8), 0));
 
 // Share links carry the prompt in the URL hash (base64url of UTF-8 JSON). Only known text fields come back.
 export function encodeSpec(spec) {
