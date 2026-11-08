@@ -1,4 +1,4 @@
-import { FIELDS, assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec, TEMPLATES } from './forge.js';
+import { FIELDS, assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec, importPrompt, TEMPLATES } from './forge.js';
 
 const $ = (s) => document.querySelector(s);
 const LIB = 'promptforge.library';
@@ -87,6 +87,21 @@ $('#template').addEventListener('change', (e) => {
   values = {};
   render();
   say(`Loaded "${t.name}". Fill in the variables.`);
+});
+
+$('#split').addEventListener('click', () => {
+  const text = $('#paste').value;
+  if (!text.trim()) return say('Paste a prompt first.');
+  const spec = importPrompt(text);
+  if (spec) {
+    setSpec(spec);
+    say('Split into parts.');
+  } else {
+    setSpec(pickSpec({ task: text }));
+    say('No parts found, so the whole text went into Task.');
+  }
+  values = {};
+  render();
 });
 
 $('#clear').addEventListener('click', () => {
