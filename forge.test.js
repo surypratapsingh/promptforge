@@ -57,14 +57,14 @@ test('every template has a task and a format', () => {
   for (const t of TEMPLATES) assert.ok(t.spec.task && t.spec.format, t.name);
 });
 
-test('share links round-trip Unicode and drop unknown fields', () => {
+test('share links round-trip Unicode and drop unknown fields', async () => {
   const spec = { task: 'नमस्ते — summarise ✓', role: 'tutor', evil: '<script>' };
-  const back = decodeSpec(encodeSpec(spec));
+  const back = await decodeSpec(await encodeSpec(spec));
   assert.equal(back.task, spec.task);
   assert.equal(back.role, 'tutor');
   assert.equal(back.evil, undefined);
   assert.equal(back.context, '');
-  assert.equal(decodeSpec('%%%not-base64'), null);
+  assert.equal(await decodeSpec('%%%not-base64'), null);
 });
 
 test('lint warns only when the prompt is over about 6,000 tokens', () => {
