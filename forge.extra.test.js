@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec,
+  assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec, TEMPLATES,
 } from './forge.js';
 
 describe('assemble', () => {
@@ -176,5 +176,24 @@ describe('score floor (FIX b75f8d7)', () => {
   it('stays at 0 when fix issues cost more than 100 points', () => {
     const issues = Array.from({ length: 5 }, () => ({ level: 'fix', msg: 'x' }));
     assert.equal(score(issues), 0);
+  });
+});
+
+describe('templates render clean', () => {
+  it('no placeholder or undefined text is left once every variable is filled', () => {
+    for (const t of TEMPLATES) {
+      const text = assemble(t.spec);
+      const values = Object.fromEntries(findVars(text).map((v) => [v, 'sample']));
+      const out = fillVars(text, values);
+      assert.deepEqual(findVars(out), [], t.name);
+      assert.doesNotMatch(out, /undefined|\{\{/, t.name);
+    }
+  });
+
+  it('each new template is listed with its name and a task', () => {
+    const names = TEMPLATES.map((t) => t.name);
+    for (const n of ['Meeting notes to action items', 'Commit message from a diff', 'Flashcards from study notes']) {
+      assert.ok(names.includes(n), n);
+    }
   });
 });
