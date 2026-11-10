@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec, TEMPLATES,
+assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec, overLimit, MAX_PART, TEMPLATES,
 } from './forge.js';
 
 describe('assemble', () => {
@@ -13,9 +13,9 @@ describe('assemble', () => {
   });
 
   it('handles Unicode and Hindi input', () => {
-    const out = assemble({ role: 'नमस्ते अनुवादक', task: 'सारांश लिखो', format: 'मुक्त-प/response' });
-    assert.ok(out.includes('नमस्ते अनुवादक'));
-    assert.ok(out.includes('सारांश लिखो'));
+    const out = assemble({ role: 'à¤¨à¤®à¤¸à¥à¤¤à¥‡ à¤…à¤¨à¥à¤µà¤¾à¤¦à¤•', task: 'à¤¸à¤¾à¤°à¤¾à¤‚à¤¶ à¤²à¤¿à¤–à¥‹', format: 'à¤®à¥à¤•à¥à¤¤-à¤ª/response' });
+    assert.ok(out.includes('à¤¨à¤®à¤¸à¥à¤¤à¥‡ à¤…à¤¨à¥à¤µà¤¾à¤¦à¤•'));
+    assert.ok(out.includes('à¤¸à¤¾à¤°à¤¾à¤‚à¤¶ à¤²à¤¿à¤–à¥‹'));
   });
 
   it('handles unexpected types', () => {
@@ -77,7 +77,7 @@ describe('lint', () => {
   });
 
   it('handles Unicode and Hindi task', () => {
-    const issues = lint({ task: 'नमस्ते — सारांश लिखो', format: 'बुलेट बिंदु' });
+    const issues = lint({ task: 'à¤¨à¤®à¤¸à¥à¤¤à¥‡ â€” à¤¸à¤¾à¤°à¤¾à¤‚à¤¶ à¤²à¤¿à¤–à¥‹', format: 'à¤¬à¥à¤²à¥‡à¤Ÿ à¤¬à¤¿à¤‚à¤¦à¥' });
     assert.ok(issues.length >= 0);
   });
 
@@ -105,11 +105,11 @@ describe('score', () => {
 
 describe('encodeSpec / decodeSpec', () => {
   it('round-trips Unicode and Hindi', () => {
-    const spec = { task: 'नमस्ते — summarise ✓', role: 'tutor', context: 'कुछ संदर्भ' };
+    const spec = { task: 'à¤¨à¤®à¤¸à¥à¤¤à¥‡ â€” summarise âœ“', role: 'tutor', context: 'à¤•à¥à¤› à¤¸à¤‚à¤¦à¤°à¥à¤­' };
     const back = decodeSpec(encodeSpec(spec));
     assert.equal(back.task, spec.task);
     assert.equal(back.role, 'tutor');
-    assert.equal(back.context, 'कुछ संदर्भ');
+    assert.equal(back.context, 'à¤•à¥à¤› à¤¸à¤‚à¤¦à¤°à¥à¤­');
     assert.equal(back.evil, undefined);
   });
 
@@ -195,5 +195,23 @@ describe('templates render clean', () => {
     for (const n of ['Meeting notes to action items', 'Commit message from a diff', 'Flashcards from study notes']) {
       assert.ok(names.includes(n), n);
     }
+  });
+});
+
+describe('share length guard', () => {
+  it('pickSpec cuts a part to MAX_PART characters on read', () => {
+    assert.equal(pickSpec({ task: 'x'.repeat(MAX_PART + 5) }).task.length, MAX_PART);
+  });
+
+  it('overLimit names only the parts that would be cut', () => {
+    assert.deepEqual(overLimit({ task: 'short', context: 'x'.repeat(MAX_PART + 1) }), ['Context']);
+    assert.deepEqual(overLimit({ task: 'short' }), []);
+    assert.deepEqual(overLimit(undefined), []);
+  });
+
+  it('a part exactly at the limit still shares whole', async () => {
+    assert.equal(overLimit({ task: 'x'.repeat(MAX_PART) }).length, 0);
+    assert.equal((await decodeSpec(await encodeSpec({ task: 'x'.repeat(MAX_PART) }))).task.length, MAX_PART);
+
   });
 });
