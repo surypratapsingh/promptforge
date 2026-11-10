@@ -66,6 +66,7 @@
   footer { margin-top: 40px; font-size: .85rem; color: var(--muted); }
   footer a { color: var(--accent); }
   [hidden] { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 </style>
 </head>
 <body>
@@ -111,7 +112,7 @@
 
       <section class="card">
         <div class="score"><h2 style="margin:0">Prompt check</h2><b id="score"></b><span class="muted">/ 100</span></div>
-        <ul class="issues" id="issues"></ul>
+        <ul class="issues" id="issues" role="list" aria-label="Prompt check results"></ul>
       </section>
     </aside>
   </div>
@@ -125,7 +126,7 @@
       <button id="import-btn">Import .json</button>
       <input type="file" id="import" accept="application/json,.json" hidden>
     </div>
-    <ul class="lib" id="lib"></ul>
+    <ul class="lib" id="lib" role="list" aria-label="Saved prompts"></ul>
     <p id="lib-empty">Saved prompts appear here. They stay in this browser; use Export to keep a copy.</p>
   </section>
 
