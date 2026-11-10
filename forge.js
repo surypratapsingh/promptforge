@@ -154,4 +154,37 @@ export const TEMPLATES = [
       format: 'A JSON array of objects with keys invoice_no, date, total, currency. Return at most 50 objects.',
     },
   },
+  {
+    name: 'Meeting notes to action items',
+    spec: {
+      role: 'an organised assistant who turns meeting notes into clear next steps',
+      task: 'List every action item in the meeting notes below.',
+      input: '{{notes}}',
+      constraints: 'Only include items someone agreed to do\nWrite \'Owner not named\' when no one is given\nKeep each action under 20 words',
+      format: 'A table with columns: Action, Owner, Due date. Use "Not set" when no date is given.',
+      tone: 'Plain and brief.',
+    },
+  },
+  {
+    name: 'Commit message from a diff',
+    spec: {
+      role: 'an engineer who writes clear git commit messages',
+      task: 'Write a commit message for the diff below.',
+      input: '{{diff}}',
+      constraints: 'Subject line in the imperative mood, 72 characters or fewer\nExplain why the change was made, not just what changed\nDo not invent changes that are not in the diff',
+      format: 'A subject line, a blank line, then up to 5 short bullet points.',
+    },
+  },
+  {
+    name: 'Flashcards from study notes',
+    spec: {
+      role: 'a patient tutor who makes study flashcards',
+      context: 'I am a student revising for an exam and need to memorise the key facts.',
+      task: 'Turn the study notes below into flashcards.',
+      input: '{{notes}}',
+      constraints: 'Each card tests one fact\nUse the notes\' own words where possible',
+      format: 'Up to 10 cards, each as two lines: "Q: ..." then "A: ...".',
+      tone: 'Encouraging and brief.',
+    },
+  },
 ];
