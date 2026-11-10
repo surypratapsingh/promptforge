@@ -70,7 +70,8 @@ function render() {
   const issues = lint(spec, values);
   $('#score').textContent = score(issues);
   $('#issues').replaceChildren(...(issues.length
-    ? issues.map((i) => el('li', { className: i.level, textContent: i.msg }))
+    ? issues.map((i) => el('li', { className: i.level },
+        el('span', { className: 'sr-only', textContent: i.level === 'fix' ? 'Fix: ' : 'Tip: ' }), i.msg))
     : [el('li', { className: 'ok', textContent: 'Nothing to fix. This prompt covers the basics.' })]));
   store.set(DRAFT, { spec, style: getStyle(), values });
 }
