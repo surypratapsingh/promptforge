@@ -10,7 +10,7 @@ Build clear AI prompts from parts, in the browser. No account, nothing sent anyw
 - **Variables:** write `{{name}}` anywhere; a box appears to fill it in. The preview shows the filled prompt.
 - **Prompt check:** simple rules flag a missing task, vague words, no output format or size, JSON without an example, rules that only say "don't", capitals, unfilled variables and very long prompts. Score out of 100.
 - **Templates:** summarise an article, review code, reply to an email, interview practice, extract JSON.
-- **Keep and share:** copy, download `.md`, save to a library in this browser, export/import the library as JSON, and copy a share link (the prompt is in the URL after `#`, so it never reaches a server).
+- **Keep and share:** copy, download `.md`, save to a library in this browser, export/import the library as JSON, and copy a share link (the prompt is in the URL after `#`, so it never reaches a server). Links are compressed with the browser's built-in `deflate-raw` and the copied message shows the link length. Links made by older versions still open.
 
 ## How it works
 - `forge.js`: pure functions with no DOM: assemble, variables, token estimate (about 4 characters per token), the rules, share-link encoding.

@@ -122,15 +122,15 @@ $('#download').addEventListener('click', () => {
   download(`${fileName($('#save-name').value || getSpec().task)}.md`, `${finalPrompt()}\n`, 'text/markdown');
 });
 
-$('#share').addEventListener('click', () => {
+$('#share').addEventListener('click', async () => {
   if (isEmpty()) return say('Fill in a part first.');
   const long = overLimit(getSpec());
   if (long.length) return say(`Too long to share: ${long.join(', ')}. Each part can be at most ${MAX_PART.toLocaleString()} characters. Shorten it first.`);
-  const url = `${location.origin}${location.pathname}#p=${encodeSpec(getSpec())}`;
+  const url = `${location.origin}${location.pathname}#p=${await encodeSpec(getSpec())}`;
   history.replaceState(null, '', url);
   copy(url, url.length > 8000
-    ? 'Link copied. It is long, so some chat apps may cut it.'
-    : 'Share link copied. Variable values are not in the link.');
+    ? `Link copied (${url.length} characters). It is long, so some chat apps may cut it.`
+    : `Share link copied (${url.length} characters). Variable values are not in the link.`);
 });
 
 // Library: [{ name, spec, style, saved }] in this browser only.
@@ -216,7 +216,7 @@ $('#import').addEventListener('change', async (e) => {
 });
 
 if (location.hash.startsWith('#p=')) {
-  const shared = decodeSpec(location.hash.slice(3));
+  const shared = await decodeSpec(location.hash.slice(3));
   if (shared) {
     setSpec(shared);
     say('Loaded a shared prompt.');
