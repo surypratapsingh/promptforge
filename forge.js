@@ -32,6 +32,27 @@ export function assemble(spec, style = 'tags') {
   return out.join('\n\n');
 }
 
+const TAG_KEYS = Object.fromEntries(Object.entries(TAGS).map(([key, tag]) => [tag, key]));
+const HEAD_KEYS = Object.fromEntries(ORDER.map((key) => [HEAD[key], key]));
+
+// Inverse of assemble(): splits a finished prompt back into parts. Returns null when no part is recognised.
+export function importPrompt(text) {
+  const t = String(text ?? '').replace(/\r\n/g, '\n').trim();
+  const tagged = [...t.matchAll(/<(\w+)>\n([\s\S]*?)\n<\/\1>/g)].filter((m) => TAG_KEYS[m[1]]);
+  // A section ends at the next known heading only, so a "## Notes" line inside a value stays in that value.
+  const names = Object.keys(HEAD_KEYS).join('|');
+  const headed = [...t.matchAll(new RegExp(`^## (${names})\\n([\\s\\S]*?)(?=^## (?:${names})$|(?![\\s\\S]))`, 'gm'))];
+  const hits = tagged.length
+    ? tagged.map((m) => [m.index, TAG_KEYS[m[1]], m[2]])
+    : headed.map((m) => [m.index, HEAD_KEYS[m[1].trim()], m[2]]);
+  if (!hits.length) return null;
+  const spec = {};
+  for (const [, key, value] of hits) spec[key] = value.trim();
+  const role = t.slice(0, hits[0][0]).trim(); // the "You are …" line sits before the first part
+  if (role) spec.role = role;
+  return pickSpec(spec);
+}
+
 const VAR = /\{\{\s*([A-Za-z_][\w]*)\s*\}\}/g;
 // Own keys only, so {{constructor}} is not "filled" by Object.prototype.
 const filled = (values, name) => Object.hasOwn(values, name) && clean(values[name]) !== '';
