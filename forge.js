@@ -91,9 +91,15 @@ export function decodeSpec(str) {
   }
 }
 
+// Longest text a part may have when it is read back (share links, imported files). Longer parts are cut.
+export const MAX_PART = 20000;
+
 // Keeps only the known text fields of untrusted input (share links, imported files).
 export const pickSpec = (raw) =>
-  Object.fromEntries(FIELDS.map((f) => [f.key, typeof raw?.[f.key] === 'string' ? raw[f.key].slice(0, 20000) : '']));
+  Object.fromEntries(FIELDS.map((f) => [f.key, typeof raw?.[f.key] === 'string' ? raw[f.key].slice(0, MAX_PART) : '']));
+
+// Labels of the parts that would be cut in a share link.
+export const overLimit = (spec) => FIELDS.filter((f) => String(spec?.[f.key] ?? '').length > MAX_PART).map((f) => f.label);
 
 export const TEMPLATES = [
   {
