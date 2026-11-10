@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { deflateRawSync } from 'node:zlib';
 import {
   assemble, findVars, fillVars, estimateTokens, lint, score, encodeSpec, decodeSpec, pickSpec,
   overLimit, MAX_PART, importPrompt, TEMPLATES,
@@ -292,5 +293,12 @@ describe('importPrompt (inverse of assemble)', () => {
     assert.equal(importPrompt(''), null);
     assert.equal(importPrompt(undefined), null);
     assert.equal(importPrompt('<unknown>\nx\n</unknown>'), null);
+  });
+});
+
+describe('share link size cap (c12)', () => {
+  it('a link that inflates past 1,000,000 bytes is refused, not decoded', async () => {
+    const bomb = 'z1.' + deflateRawSync(Buffer.from(JSON.stringify({ task: 'a'.repeat(1_100_000) }))).toString('base64url');
+    assert.equal(await decodeSpec(bomb), null);
   });
 });
