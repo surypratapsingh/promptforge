@@ -133,7 +133,10 @@ export async function encodeSpec(spec) {
 export async function decodeSpec(str) {
   try {
     const bytes = str.startsWith(LINK_PREFIX) ? await inflate(unb64url(str.slice(LINK_PREFIX.length))) : unb64url(str);
-    return pickSpec(JSON.parse(new TextDecoder().decode(bytes)));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes));
+    // Only an object is a prompt: null, numbers and arrays are not links.
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    return pickSpec(parsed);
   } catch {
     return null;
   }

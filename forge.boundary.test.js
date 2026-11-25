@@ -19,6 +19,13 @@ test('a link is "z1." plus base64url, with no padding and no other characters', 
   }
 });
 
+test('a decoded link that is not an object is not a prompt (null, not an empty form)', async () => {
+  const b64 = (s) => Buffer.from(s).toString('base64url');
+  assert.equal(await decodeSpec(b64('null')), null);
+  assert.equal(await decodeSpec(b64('42')), null);
+  assert.equal(await decodeSpec(b64('[1, 2]')), null);
+});
+
 test('overLimit flags a part only above MAX_PART characters', () => {
   assert.deepEqual(overLimit({ task: 'x'.repeat(MAX_PART) }), []);
   assert.deepEqual(overLimit({ task: 'x'.repeat(MAX_PART + 1) }), ['Task']);
