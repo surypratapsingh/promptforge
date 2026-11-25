@@ -222,9 +222,11 @@ $('#import').addEventListener('change', async (e) => {
         saved: new Date(Number.isNaN(Date.parse(p.saved)) ? Date.now() : p.saved).toISOString(),
       }));
     if (!items.length) throw new Error('empty');
-    const names = new Set(items.map((p) => p.name));
-    if (saveLib([...items, ...library().filter((p) => !names.has(p.name))])) {
-      say(`Imported ${items.length} prompt${items.length === 1 ? '' : 's'}.`);
+    // The same name twice in one file: the later entry wins, as a second save under that name would.
+    const unique = [...new Map(items.map((p) => [p.name, p])).values()];
+    const names = new Set(unique.map((p) => p.name));
+    if (saveLib([...unique, ...library().filter((p) => !names.has(p.name))])) {
+      say(`Imported ${unique.length} prompt${unique.length === 1 ? '' : 's'}.`);
     }
   } catch {
     say('That file is not a PromptForge library export.');
